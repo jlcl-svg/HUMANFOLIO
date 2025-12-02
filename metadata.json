@@ -1,0 +1,7 @@
+{
+  "name": "HUMANFOLIO",
+  "description": "Uma plataforma de portfólio pós-normalidade focada na verificação da autenticidade humana através do processo projetual, não do produto final.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
