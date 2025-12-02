@@ -1,31 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { User, EducationItem, ExperienceItem } from '../types';
+import { compressImage } from '../utils/image';
 import { 
-  ArrowRight, 
-  User as UserIcon, 
-  Mail, 
-  Lock, 
-  Calendar, 
-  MapPin, 
-  ShieldCheck,
-  CreditCard,
-  Camera,
-  Briefcase,
-  GraduationCap,
-  Upload,
-  Plus,
-  Trash2,
-  LogIn,
-  Linkedin,
-  Instagram,
-  Globe,
-  Phone,
-  Link as LinkIcon
+  ArrowRight, User as UserIcon, Mail, Lock, Calendar, MapPin, 
+  ShieldCheck, CreditCard, Camera, Briefcase, GraduationCap, 
+  Upload, Plus, Trash2, LogIn, Linkedin, Instagram, Globe, Phone, Link as LinkIcon
 } from 'lucide-react';
 
 interface Props {
   onLogin: (user: User) => void;
-  mockUsers: User[]; // Pass existing users for mock login
+  mockUsers: User[];
 }
 
 const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
@@ -35,33 +19,27 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
   const [loginError, setLoginError] = useState('');
   const [registerError, setRegisterError] = useState('');
 
-  // Registration State
   const [step, setStep] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Temporary state for adding list items
   const [tempEdu, setTempEdu] = useState<Partial<EducationItem>>({});
   const [tempExp, setTempExp] = useState<Partial<ExperienceItem>>({});
 
   const [formData, setFormData] = useState({
-    // Step 1: Credenciais
     fullName: '',
     email: '',
     password: '',
-    // Step 2: Dados Pessoais
     birthDate: '',
     gender: '',
     cpf: '',
     country: '',
     city: '',
     termsAccepted: false,
-    // Step 3: Perfil Profissional
     role: '',
     bio: '',
     education: [] as EducationItem[],
     experience: [] as ExperienceItem[],
     photoUrl: '',
-    // Contatos
     phone: '',
     linkedin: '',
     instagram: '',
@@ -70,13 +48,10 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
 
   const handleLoginSubmit = () => {
     const user = mockUsers.find(u => u.email === loginEmail);
-    
     if (!user) {
-        setLoginError('Email não encontrado. Por favor, crie uma conta.');
+        setLoginError('Email não encontrado. Crie uma conta ou verifique o endereço.');
         return;
     }
-
-    // Simple mock auth check (in real app, hash password)
     if (user.password === loginPassword) {
         onLogin(user);
     } else {
@@ -87,13 +62,14 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
   const handleNext = () => setStep(prev => prev + 1);
   const handleBack = () => setStep(prev => prev - 1);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, photoUrl: reader.result as string });
-      };
-      reader.readAsDataURL(e.target.files[0]);
+      try {
+        const compressed = await compressImage(e.target.files[0]);
+        setFormData({ ...formData, photoUrl: compressed });
+      } catch (error) {
+        alert("Erro ao processar imagem.");
+      }
     }
   };
 
@@ -137,11 +113,10 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
   const finishRegister = () => {
     if (!formData.termsAccepted) return;
 
-    // Check for duplicate email
     const emailExists = mockUsers.some(u => u.email === formData.email);
     if (emailExists) {
       setRegisterError("Este e-mail já está cadastrado. Por favor, faça login ou use outro e-mail.");
-      setStep(0); // Go back to step 0 to fix email
+      setStep(0);
       return;
     }
     
@@ -170,7 +145,6 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
 
   const isStep1Valid = formData.fullName.length > 3 && formData.email.includes('@') && formData.password.length >= 8;
   const isStep2Valid = formData.cpf.length >= 11 && formData.birthDate && formData.country && formData.city && formData.gender && formData.termsAccepted;
-  // Step 3 is optional
   
   const inputClass = "w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all";
 
@@ -230,7 +204,6 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50 font-sans">
         <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-fade-in">
-            {/* Header */}
             <div className="px-8 pt-8 pb-6 bg-white border-b border-gray-100 flex justify-between items-start">
                 <div>
                     <div className="flex items-center gap-2 mb-2">
@@ -246,7 +219,6 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
                 </button>
             </div>
 
-            {/* Steps Progress */}
             <div className="flex w-full h-1 bg-gray-100">
                 <div 
                     className="h-full bg-blue-600 transition-all duration-500 ease-out" 
@@ -434,7 +406,6 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
                             <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">Pode pular e editar depois</span>
                         </div>
 
-                        {/* Photo & Basic Info */}
                         <div className="flex flex-col sm:flex-row gap-6 mb-6">
                              <div 
                                 onClick={() => fileInputRef.current?.click()}
@@ -482,7 +453,6 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
                              </div>
                         </div>
 
-                        {/* Contacts */}
                         <div className="space-y-3 pt-4 border-t border-gray-100">
                              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contatos</h3>
                              <div className="grid grid-cols-2 gap-4">
@@ -505,7 +475,6 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
                              </div>
                         </div>
 
-                        {/* Education Builder */}
                         <div className="space-y-3 pt-4 border-t border-gray-100">
                              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Formação Acadêmica</h3>
                              {formData.education.map(edu => (
@@ -531,7 +500,6 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
                              </div>
                         </div>
 
-                        {/* Experience Builder */}
                         <div className="space-y-3 pt-4 border-t border-gray-100">
                              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Experiência Profissional</h3>
                              {formData.experience.map(exp => (

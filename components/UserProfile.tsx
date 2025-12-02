@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User, Project, EducationItem, ExperienceItem } from '../types';
 import { MapPin, Users, Briefcase, GraduationCap, Plus, LogOut, Edit2, X, Check, ArrowLeft, Camera, Trash2, Link as LinkIcon } from 'lucide-react';
+import { compressImage } from '../utils/image';
 
 interface Props {
   user: User;
@@ -31,7 +32,6 @@ const UserProfile: React.FC<Props> = ({
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // State for new items when editing
   const [newEdu, setNewEdu] = useState<Partial<EducationItem>>({});
   const [newExp, setNewExp] = useState<Partial<ExperienceItem>>({});
   const [showAddEdu, setShowAddEdu] = useState(false);
@@ -49,13 +49,14 @@ const UserProfile: React.FC<Props> = ({
     if (onFollow) onFollow();
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditedUser({ ...editedUser, photoUrl: reader.result as string });
-      };
-      reader.readAsDataURL(e.target.files[0]);
+      try {
+        const compressed = await compressImage(e.target.files[0]);
+        setEditedUser({ ...editedUser, photoUrl: compressed });
+      } catch (err) {
+        alert("Erro ao processar imagem.");
+      }
     }
   };
 
@@ -113,7 +114,6 @@ const UserProfile: React.FC<Props> = ({
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 animate-fade-in">
-      {/* Navigation */}
       <div className="flex justify-between items-center mb-8">
         <button onClick={onBack} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors">
             <ArrowLeft size={20} /> Voltar para Feed
@@ -126,7 +126,6 @@ const UserProfile: React.FC<Props> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Profile Card */}
         <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center relative overflow-hidden">
                 {isOwnProfile && !isEditing && (
@@ -167,7 +166,6 @@ const UserProfile: React.FC<Props> = ({
                     )}
                 </div>
                 
-                {/* Hidden File Input */}
                 <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -249,7 +247,6 @@ const UserProfile: React.FC<Props> = ({
                 </div>
             </div>
 
-            {/* About */}
             <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Sobre</h3>
                 {isEditing ? (
@@ -265,10 +262,7 @@ const UserProfile: React.FC<Props> = ({
             </div>
         </div>
 
-        {/* Right Column: Content */}
         <div className="lg:col-span-2 space-y-8">
-            
-            {/* Experience & Education */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                 <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                     <Briefcase className="text-blue-500" size={20} /> Experiência
@@ -405,7 +399,6 @@ const UserProfile: React.FC<Props> = ({
                 )}
             </div>
 
-            {/* Projects Grid */}
             <div>
                 <h2 className="text-lg font-bold text-gray-900 mb-6">Portfólio</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

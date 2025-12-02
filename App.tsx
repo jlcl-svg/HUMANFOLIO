@@ -149,52 +149,77 @@ const MOCK_PROJECTS: Project[] = [
 type ViewState = 'DASHBOARD' | 'PROJECT_DETAIL' | 'USER_PROFILE';
 
 function App() {
-  // Initialize state from localStorage if available, otherwise use MOCK data
   const [users, setUsers] = useState<User[]>(() => {
-    const savedUsers = localStorage.getItem('humanfolio_users');
-    return savedUsers ? JSON.parse(savedUsers) : MOCK_USERS;
+    try {
+        const savedUsers = localStorage.getItem('humanfolio_users');
+        return savedUsers ? JSON.parse(savedUsers) : MOCK_USERS;
+    } catch (e) {
+        return MOCK_USERS;
+    }
   });
 
   const [projects, setProjects] = useState<Project[]>(() => {
-    const savedProjects = localStorage.getItem('humanfolio_projects');
-    return savedProjects ? JSON.parse(savedProjects) : MOCK_PROJECTS;
+    try {
+        const savedProjects = localStorage.getItem('humanfolio_projects');
+        return savedProjects ? JSON.parse(savedProjects) : MOCK_PROJECTS;
+    } catch (e) {
+        return MOCK_PROJECTS;
+    }
   });
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('humanfolio_current_user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+        const savedUser = localStorage.getItem('humanfolio_current_user');
+        return savedUser ? JSON.parse(savedUser) : null;
+    } catch(e) {
+        return null;
+    }
   });
   
-  // Navigation State
   const [view, setView] = useState<ViewState>('DASHBOARD');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-
-  // Modal State
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | undefined>(undefined);
-  
-  // Popups State
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Delete Project State
   const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] = useState(false);
   const [projectToDeleteId, setProjectToDeleteId] = useState<string | null>(null);
 
-  // Persistence Effects
+  // Sync across tabs
   useEffect(() => {
-    localStorage.setItem('humanfolio_users', JSON.stringify(users));
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'humanfolio_users' && e.newValue) {
+        setUsers(JSON.parse(e.newValue));
+      }
+      if (e.key === 'humanfolio_projects' && e.newValue) {
+        setProjects(JSON.parse(e.newValue));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  useEffect(() => {
+    try {
+        localStorage.setItem('humanfolio_users', JSON.stringify(users));
+    } catch (e) {
+        setSuccessMessage('Erro: Armazenamento cheio. Não foi possível salvar dados.');
+    }
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem('humanfolio_projects', JSON.stringify(projects));
+    try {
+        localStorage.setItem('humanfolio_projects', JSON.stringify(projects));
+    } catch (e) {
+        setSuccessMessage('Erro: Armazenamento cheio. Não foi possível salvar o projeto.');
+    }
   }, [projects]);
 
   useEffect(() => {
     if (currentUser) {
         localStorage.setItem('humanfolio_current_user', JSON.stringify(currentUser));
-        // Ensure current user data in state is in sync with users array
         const updatedSelf = users.find(u => u.id === currentUser.id);
         if (updatedSelf && JSON.stringify(updatedSelf) !== JSON.stringify(currentUser)) {
             setCurrentUser(updatedSelf);
@@ -205,18 +230,11 @@ function App() {
   }, [currentUser, users]);
 
   const handleLogin = (newUser: User) => {
-    // Check if user exists (for registration flow coming from AuthGate)
     const existingIndex = users.findIndex(u => u.email === newUser.email);
-    
     let updatedUsers = [...users];
     if (existingIndex === -1) {
-        // New user registration
         updatedUsers.push(newUser);
-    } else {
-        // Login of existing user - ensure we have the latest data
-        // Note: AuthGate passes the user object found in mockUsers prop, so it should be up to date
-    }
-    
+    } 
     setUsers(updatedUsers);
     setCurrentUser(newUser);
     setView('DASHBOARD');
@@ -275,7 +293,6 @@ function App() {
       }
   };
 
-  // Navigation Handlers
   const goToProject = (project: Project) => {
       setSelectedProjectId(project.id);
       setView('PROJECT_DETAIL');
@@ -321,7 +338,6 @@ function App() {
                     onDeleteProject={() => requestDeleteProject(project.id)}
                   />
               );
-          
           case 'USER_PROFILE':
               const userToView = users.find(u => u.id === selectedUserId);
               if (!userToView) return <div>Usuário não encontrado</div>;
@@ -338,7 +354,6 @@ function App() {
                     onSelectProject={goToProject}
                   />
               );
-
           case 'DASHBOARD':
           default:
               return (

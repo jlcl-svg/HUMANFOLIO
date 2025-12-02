@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Plus, Trash2, ArrowRight, ArrowLeft, Check, Image as ImageIcon, Tag } from 'lucide-react';
 import { ProjectPhase, StageData, Project } from '../types';
+import { compressImage } from '../utils/image';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSave: (project: Project) => void;
   currentUser: { id: string; name: string };
-  projectToEdit?: Project; // Optional prop for editing mode
+  projectToEdit?: Project;
 }
 
-// Helper to generate empty stages structure
 const getEmptyStages = (): Record<ProjectPhase, StageData> => {
   return Object.values(ProjectPhase).reduce((acc, phase) => {
     acc[phase] = {
@@ -28,32 +28,26 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
   const [step, setStep] = useState(1);
   const [activePhase, setActivePhase] = useState<ProjectPhase>(ProjectPhase.INITIATION);
 
-  // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [coverImage, setCoverImage] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tempTag, setTempTag] = useState('');
   const [stages, setStages] = useState<Record<ProjectPhase, StageData>>(getEmptyStages());
-
-  // Evidence Helpers
   const [tempLink, setTempLink] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const evidenceInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Effect to handle Edit Mode or Reset
   useEffect(() => {
     if (isOpen) {
       if (projectToEdit) {
-        // Populate fields for editing
         setTitle(projectToEdit.title);
         setDescription(projectToEdit.description);
         setCoverImage(projectToEdit.coverImage || '');
         setTags(projectToEdit.tags || []);
-        setStages(JSON.parse(JSON.stringify(projectToEdit.stages))); // Deep copy to avoid reference issues
+        setStages(JSON.parse(JSON.stringify(projectToEdit.stages)));
         setStep(1);
       } else {
-        // Reset for new project (ensure clean state if opened without edit prop)
         resetForm();
       }
     }
@@ -78,19 +72,24 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, isCover: boolean) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isCover: boolean) => {
     if (e.target.files && e.target.files[0]) {
-      const url = URL.createObjectURL(e.target.files[0]);
-      if (isCover) {
-        setCoverImage(url);
-      } else {
-        setStages({
-            ...stages,
-            [activePhase]: {
-              ...stages[activePhase],
-              evidenceLinks: [...stages[activePhase].evidenceLinks, url]
-            }
-          });
+      try {
+        const compressedBase64 = await compressImage(e.target.files[0]);
+        if (isCover) {
+          setCoverImage(compressedBase64);
+        } else {
+          setStages({
+              ...stages,
+              [activePhase]: {
+                ...stages[activePhase],
+                evidenceLinks: [...stages[activePhase].evidenceLinks, compressedBase64]
+              }
+            });
+        }
+      } catch (err) {
+        console.error("Image compression failed", err);
+        alert("Erro ao processar imagem. Tente uma menor.");
       }
     }
   };
@@ -156,13 +155,12 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
       stages: stages
     };
     onSave(newProject);
-    resetForm(); // Clear form after save
+    resetForm();
     onClose();
   };
 
   const isStep1Valid = title.length > 3 && description.length > 10;
   
-  // Dicionário de dicas para cada fase
   const phaseTips: Record<ProjectPhase, string> = {
     [ProjectPhase.INITIATION]: "O nascimento da ideia. Rascunhos de guardanapo, insights repentinos, o problema inicial. Mostre a bagunça do começo.",
     [ProjectPhase.PLANNING]: "A organização do caos. Cronogramas (quebrados?), escolha de materiais, pesquisas de referência. Como você planejou atacar o problema?",
@@ -174,8 +172,6 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
       <div className="bg-white w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        
-        {/* Header */}
         <div className="flex justify-between items-center px-8 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-xl font-bold text-gray-900">{projectToEdit ? 'Editar Projeto' : 'Novo Projeto'}</h2>
@@ -186,9 +182,7 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-8">
-          
           {step === 1 && (
             <div className="max-w-2xl mx-auto space-y-8">
                <div className="space-y-2">
@@ -212,7 +206,6 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
                  />
                </div>
 
-               {/* Tags Input */}
                <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-700 uppercase tracking-wide">Palavras-chave (Tags)</label>
                     <div className="flex gap-2 mb-2">
@@ -248,7 +241,7 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
                          <input 
                             className="w-full pl-4 pr-4 py-3 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                             placeholder="Cole a URL da imagem..."
-                            value={coverImage}
+                            value={coverImage && !coverImage.startsWith('data:') ? coverImage : ''}
                             onChange={e => setCoverImage(e.target.value)}
                         />
                       </div>
@@ -284,7 +277,6 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
 
           {step === 2 && (
             <div className="flex h-full gap-8">
-              {/* Sidebar Tabs */}
               <div className="w-64 flex flex-col gap-2 shrink-0 border-r border-gray-100 pr-6">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">Etapas do Processo</h3>
                 {Object.values(ProjectPhase).map(phase => (
@@ -303,7 +295,6 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
                 ))}
               </div>
 
-              {/* Stage Content */}
               <div className="flex-1 flex flex-col h-full overflow-hidden">
                 <div className="mb-4">
                   <h2 className="text-2xl font-bold text-gray-900 mb-1">{activePhase}</h2>
@@ -362,7 +353,6 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
                         />
                     </div>
 
-                    {/* Evidence List */}
                     {stages[activePhase].evidenceLinks.length > 0 && (
                         <div className="grid grid-cols-4 gap-4 mt-4">
                         {stages[activePhase].evidenceLinks.map((link, idx) => (
@@ -385,7 +375,6 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
           )}
         </div>
 
-        {/* Footer Actions */}
         <div className="px-8 py-5 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
           {step === 2 ? (
             <button 
@@ -395,7 +384,7 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
               <ArrowLeft size={18} /> Voltar
             </button>
           ) : (
-            <div></div> // Spacer
+            <div></div> 
           )}
 
           {step === 1 ? (
@@ -415,7 +404,6 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
               </button>
           )}
         </div>
-
       </div>
     </div>
   );
