@@ -1,5 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
+declare const process: any;
+
 // We use Gemini not to generate content, but to "judge" it or help verify "messiness"
 // This aligns with the prompt's theme of broken trust - using AI to police AI (ironic).
 
