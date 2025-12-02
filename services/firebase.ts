@@ -21,7 +21,5 @@ const firebaseConfig = {
 };
 
 // Inicializa o Firebase
-// Nota: Se as chaves estiverem vazias (ex: durante build ou preview sem .env), 
-// o initializeApp pode lançar warning, mas evita crash total da página branca.
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);

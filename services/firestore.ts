@@ -7,7 +7,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  Timestamp
+  getDocs
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Project, User } from "../types";
@@ -16,15 +16,17 @@ const PROJECTS_COLLECTION = "projects";
 const USERS_COLLECTION = "users";
 
 // Helper para converter Timestamp do Firestore para string ISO
-const convertTimestamps = (data: any) => {
+// Isso evita erros no React ao tentar renderizar objetos de data
+const convertFirestoreData = (data: any) => {
   const result = { ...data };
+  
+  // Converte createdAt principal
   if (result.createdAt && typeof result.createdAt.toDate === 'function') {
     result.createdAt = result.createdAt.toDate().toISOString();
+  } else if (!result.createdAt) {
+    result.createdAt = new Date().toISOString();
   }
-  // Se houver serverTimestamp pendente (null), usa data atual
-  if (result.createdAt === null) {
-      result.createdAt = new Date().toISOString();
-  }
+
   return result;
 };
 
@@ -32,35 +34,45 @@ const convertTimestamps = (data: any) => {
 
 export function subscribeToProjects(onUpdate: (projects: Project[]) => void) {
   const colRef = collection(db, PROJECTS_COLLECTION);
-  // Ordenar por data de criação decrescente
+  // Ordenar por data de criação decrescente (mais recentes primeiro)
   const q = query(colRef, orderBy("createdAt", "desc"));
   
+  // onSnapshot cria um listener em tempo real
+  // Assim que alguém salvar algo no banco, essa função roda automaticamente
   return onSnapshot(q, (snapshot) => {
     const projects = snapshot.docs.map((doc) => {
       const data = doc.data();
       return { 
-          ...convertTimestamps(data),
+          ...convertFirestoreData(data),
           id: doc.id 
       } as Project;
     });
     onUpdate(projects);
   }, (error) => {
     console.error("Erro ao sincronizar projetos:", error);
-    // Em caso de erro (ex: permissões ou offline), não quebra a UI
   });
 }
 
 export async function saveProjectToFirestore(project: Project) {
   const docRef = doc(db, PROJECTS_COLLECTION, project.id);
   
-  // Prepara o objeto, removendo undefined e ajustando datas
+  // Deep clone para remover referências e garantir objeto limpo
   const projectData = JSON.parse(JSON.stringify(project));
   
-  // Se for criação nova ou não tiver data válida, usa serverTimestamp
-  if (!projectData.createdAt) {
-      projectData.createdAt = serverTimestamp();
+  // Usar serverTimestamp para consistência cronológica entre usuários
+  // Apenas se for um novo projeto ou se a data for string ISO (para converter)
+  // Se já for um objeto Timestamp, o Firestore aceita.
+  if (!projectData.createdAt || typeof projectData.createdAt === 'string') {
+      // Nota: Ao editar, preferimos manter a data original. 
+      // Se for novo, usamos serverTimestamp.
+      // Aqui simplificamos convertendo string ISO de volta para Date se necessário,
+      // ou deixando o Firestore gerenciar.
+      if (!projectData.createdAt) {
+          projectData.createdAt = serverTimestamp();
+      }
   }
 
+  // Merge: true garante que não sobrescrevemos campos que não enviamos (embora enviemos tudo aqui)
   await setDoc(docRef, projectData, { merge: true });
 }
 
@@ -80,6 +92,8 @@ export function subscribeToUsers(onUpdate: (users: User[]) => void) {
       id: doc.id 
     })) as User[];
     onUpdate(users);
+  }, (error) => {
+      console.error("Erro ao sincronizar usuários:", error);
   });
 }
 

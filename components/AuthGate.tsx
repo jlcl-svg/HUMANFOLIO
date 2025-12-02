@@ -3,8 +3,7 @@ import { User, EducationItem, ExperienceItem } from '../types';
 import { compressImage } from '../utils/image';
 import { 
   ArrowRight, User as UserIcon, Mail, Lock, Calendar, MapPin, 
-  ShieldCheck, CreditCard, Camera, Briefcase, GraduationCap, 
-  Upload, Plus, Trash2, LogIn, Linkedin, Instagram, Globe, Phone, Link as LinkIcon
+  ShieldCheck, Camera, Trash2, LogIn, Linkedin, Instagram, Globe, Phone, Link as LinkIcon, Plus
 } from 'lucide-react';
 
 interface Props {
@@ -31,7 +30,6 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
     password: '',
     birthDate: '',
     gender: '',
-    cpf: '',
     country: '',
     city: '',
     termsAccepted: false,
@@ -144,7 +142,7 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
   };
 
   const isStep1Valid = formData.fullName.length > 3 && formData.email.includes('@') && formData.password.length >= 8;
-  const isStep2Valid = formData.cpf.length >= 11 && formData.birthDate && formData.country && formData.city && formData.gender && formData.termsAccepted;
+  const isStep2Valid = formData.birthDate && formData.country && formData.city && formData.gender && formData.termsAccepted;
   
   const inputClass = "w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all";
 
@@ -307,34 +305,20 @@ const AuthGate: React.FC<Props> = ({ onLogin, mockUsers }) => {
                                 </div>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">CPF</label>
-                                <div className="relative">
-                                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                    <input 
-                                        type="text" 
-                                        className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                                        placeholder="000.000.000-00"
-                                        value={formData.cpf}
-                                        onChange={e => setFormData({...formData, cpf: e.target.value})}
-                                    />
-                                </div>
+                                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Gênero</label>
+                                <select 
+                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none appearance-none"
+                                    value={formData.gender}
+                                    onChange={e => setFormData({...formData, gender: e.target.value})}
+                                >
+                                    <option value="">Selecione...</option>
+                                    <option value="Feminino">Feminino</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Não-binário">Não-binário</option>
+                                    <option value="Outro">Outro</option>
+                                    <option value="Prefiro não declarar">Prefiro não declarar</option>
+                                </select>
                             </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Gênero</label>
-                            <select 
-                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none appearance-none"
-                                value={formData.gender}
-                                onChange={e => setFormData({...formData, gender: e.target.value})}
-                            >
-                                <option value="">Selecione...</option>
-                                <option value="Feminino">Feminino</option>
-                                <option value="Masculino">Masculino</option>
-                                <option value="Não-binário">Não-binário</option>
-                                <option value="Outro">Outro</option>
-                                <option value="Prefiro não declarar">Prefiro não declarar</option>
-                            </select>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
