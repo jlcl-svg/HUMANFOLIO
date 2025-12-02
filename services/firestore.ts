@@ -2,75 +2,87 @@ import {
   collection,
   doc,
   setDoc,
-  updateDoc,
   deleteDoc,
   onSnapshot,
   query,
   orderBy,
   serverTimestamp,
-  DocumentData
+  Timestamp
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Project, User } from "../types";
 
-// Coleções
 const PROJECTS_COLLECTION = "projects";
 const USERS_COLLECTION = "users";
 
+// Helper para converter Timestamp do Firestore para string ISO
+const convertTimestamps = (data: any) => {
+  const result = { ...data };
+  if (result.createdAt && typeof result.createdAt.toDate === 'function') {
+    result.createdAt = result.createdAt.toDate().toISOString();
+  }
+  // Se houver serverTimestamp pendente (null), usa data atual
+  if (result.createdAt === null) {
+      result.createdAt = new Date().toISOString();
+  }
+  return result;
+};
+
 // --- PROJETOS ---
 
-// Inscrever-se para receber atualizações de projetos em tempo real
 export function subscribeToProjects(onUpdate: (projects: Project[]) => void) {
   const colRef = collection(db, PROJECTS_COLLECTION);
-  // Ordenar por data de criação (mais recente primeiro)
-  // Nota: Pode exigir criação de índice no console do Firebase se falhar
+  // Ordenar por data de criação decrescente
   const q = query(colRef, orderBy("createdAt", "desc"));
   
   return onSnapshot(q, (snapshot) => {
-    const projects = snapshot.docs.map((d) => ({ 
-      ...d.data() 
-    })) as Project[];
+    const projects = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return { 
+          ...convertTimestamps(data),
+          id: doc.id 
+      } as Project;
+    });
     onUpdate(projects);
+  }, (error) => {
+    console.error("Erro ao sincronizar projetos:", error);
+    // Em caso de erro (ex: permissões ou offline), não quebra a UI
   });
 }
 
-// Criar ou Sobrescrever Projeto
 export async function saveProjectToFirestore(project: Project) {
   const docRef = doc(db, PROJECTS_COLLECTION, project.id);
-  // Convertemos para objeto puro para garantir que o Firestore aceite
+  
+  // Prepara o objeto, removendo undefined e ajustando datas
   const projectData = JSON.parse(JSON.stringify(project));
   
-  // Adiciona timestamp do servidor para ordenação se for novo
-  if (!project.createdAt) {
-      projectData.createdAt = new Date().toISOString();
-      projectData.serverTimestamp = serverTimestamp();
+  // Se for criação nova ou não tiver data válida, usa serverTimestamp
+  if (!projectData.createdAt) {
+      projectData.createdAt = serverTimestamp();
   }
-  
+
   await setDoc(docRef, projectData, { merge: true });
 }
 
-// Deletar Projeto
 export async function deleteProjectFromFirestore(projectId: string) {
   const docRef = doc(db, PROJECTS_COLLECTION, projectId);
   await deleteDoc(docRef);
 }
 
-
 // --- USUÁRIOS ---
 
-// Inscrever-se para receber lista de usuários (para login e perfis)
 export function subscribeToUsers(onUpdate: (users: User[]) => void) {
   const colRef = collection(db, USERS_COLLECTION);
   
   return onSnapshot(colRef, (snapshot) => {
-    const users = snapshot.docs.map((d) => ({ 
-      ...d.data() 
+    const users = snapshot.docs.map((doc) => ({ 
+      ...doc.data(), 
+      id: doc.id 
     })) as User[];
     onUpdate(users);
   });
 }
 
-// Salvar/Atualizar Usuário
 export async function saveUserToFirestore(user: User) {
   const docRef = doc(db, USERS_COLLECTION, user.id);
   const userData = JSON.parse(JSON.stringify(user));
