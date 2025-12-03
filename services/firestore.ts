@@ -61,18 +61,13 @@ export async function saveProjectToFirestore(project: Project) {
   
   // Usar serverTimestamp para consistência cronológica entre usuários
   // Apenas se for um novo projeto ou se a data for string ISO (para converter)
-  // Se já for um objeto Timestamp, o Firestore aceita.
   if (!projectData.createdAt || typeof projectData.createdAt === 'string') {
-      // Nota: Ao editar, preferimos manter a data original. 
-      // Se for novo, usamos serverTimestamp.
-      // Aqui simplificamos convertendo string ISO de volta para Date se necessário,
-      // ou deixando o Firestore gerenciar.
       if (!projectData.createdAt) {
           projectData.createdAt = serverTimestamp();
       }
   }
 
-  // Merge: true garante que não sobrescrevemos campos que não enviamos (embora enviemos tudo aqui)
+  // Merge: true garante que não sobrescrevemos campos que não enviamos
   await setDoc(docRef, projectData, { merge: true });
 }
 

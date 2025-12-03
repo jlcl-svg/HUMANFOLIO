@@ -23,7 +23,10 @@ function App() {
   // Estado local sincronizado com Firestore (Single Source of Truth)
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Controle de carregamento individual para garantir sincronia
+  const [isProjectsLoading, setIsProjectsLoading] = useState(true);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
 
   // Estado da sessão (mantido localmente apenas para persistência de login neste dispositivo)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -50,12 +53,13 @@ function App() {
     // Inscrever-se nos Projetos
     const unsubscribeProjects = subscribeToProjects((liveProjects) => {
       setProjects(liveProjects);
-      setIsLoading(false);
+      setIsProjectsLoading(false);
     });
 
     // Inscrever-se nos Usuários
     const unsubscribeUsers = subscribeToUsers((liveUsers) => {
       setUsers(liveUsers);
+      setIsUsersLoading(false);
     });
 
     return () => {
@@ -66,7 +70,7 @@ function App() {
 
   // 2. Atualizar CurrentUser se os dados dele mudarem no banco (ex: mudou foto em outro pc)
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && !isUsersLoading) {
         const updatedSelf = users.find(u => u.id === currentUser.id);
         // Só atualiza se houver diferença para evitar loops
         if (updatedSelf && JSON.stringify(updatedSelf) !== JSON.stringify(currentUser)) {
@@ -74,7 +78,7 @@ function App() {
             localStorage.setItem('humanfolio_current_user', JSON.stringify(updatedSelf));
         }
     }
-  }, [users, currentUser]);
+  }, [users, currentUser, isUsersLoading]);
 
   // Handler: Login / Cadastro
   const handleLogin = async (userPayload: User) => {
@@ -185,6 +189,19 @@ function App() {
       setIsAddProjectModalOpen(true);
   };
 
+  const isLoading = isProjectsLoading || isUsersLoading;
+
+  // IMPORTANT: Show loading BEFORE checking for currentUser or rendering AuthGate.
+  // This prevents AuthGate from receiving an empty 'users' array and failing login checks.
+  if (isLoading) {
+    return (
+        <div className="flex items-center justify-center min-h-screen flex-col gap-4 bg-gray-50">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 animate-pulse font-medium">Carregando HUMANFOLIO...</p>
+        </div>
+    );
+  }
+
   if (!currentUser) {
     // Passamos 'users' (do Firestore) para o AuthGate verificar emails duplicados
     return <AuthGate onLogin={handleLogin} mockUsers={users} />;
@@ -243,14 +260,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
-      {isLoading && projects.length === 0 ? (
-        <div className="flex items-center justify-center min-h-screen flex-col gap-4">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-500 animate-pulse">Conectando ao Humanfolio...</p>
-        </div>
-      ) : (
-        renderContent()
-      )}
+      {renderContent()}
       
       <AddProjectModal 
         isOpen={isAddProjectModalOpen}

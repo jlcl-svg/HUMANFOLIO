@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User, Project, EducationItem, ExperienceItem } from '../types';
-import { MapPin, Users, Briefcase, GraduationCap, Plus, LogOut, Edit2, X, Check, ArrowLeft, Camera, Trash2, Link as LinkIcon } from 'lucide-react';
+import { MapPin, Users, Briefcase, GraduationCap, Plus, LogOut, Edit2, X, Check, ArrowLeft, Camera, Trash2, Link as LinkIcon, Linkedin, Instagram, Globe, Phone } from 'lucide-react';
 import { compressImage } from '../utils/image';
 
 interface Props {
@@ -258,6 +258,80 @@ const UserProfile: React.FC<Props> = ({
                     />
                 ) : (
                     <p className="text-sm text-gray-600 leading-relaxed">{user.bio || <span className="text-gray-400 italic">Sem biografia.</span>}</p>
+                )}
+            </div>
+
+            <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-sm font-bold text-gray-900 mb-4">Contatos</h3>
+                {isEditing ? (
+                    <div className="space-y-3">
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input 
+                                className={`pl-10 ${inputClass}`} 
+                                placeholder="Telefone" 
+                                value={editedUser.contacts?.phone || ''} 
+                                onChange={e => setEditedUser({...editedUser, contacts: {...editedUser.contacts, phone: e.target.value}})} 
+                            />
+                        </div>
+                        <div className="relative">
+                            <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input 
+                                className={`pl-10 ${inputClass}`} 
+                                placeholder="LinkedIn URL" 
+                                value={editedUser.contacts?.linkedin || ''} 
+                                onChange={e => setEditedUser({...editedUser, contacts: {...editedUser.contacts, linkedin: e.target.value}})} 
+                            />
+                        </div>
+                        <div className="relative">
+                            <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input 
+                                className={`pl-10 ${inputClass}`} 
+                                placeholder="Instagram (@...)" 
+                                value={editedUser.contacts?.instagram || ''} 
+                                onChange={e => setEditedUser({...editedUser, contacts: {...editedUser.contacts, instagram: e.target.value}})} 
+                            />
+                        </div>
+                        <div className="relative">
+                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input 
+                                className={`pl-10 ${inputClass}`} 
+                                placeholder="Website / Portfolio URL" 
+                                value={editedUser.contacts?.website || ''} 
+                                onChange={e => setEditedUser({...editedUser, contacts: {...editedUser.contacts, website: e.target.value}})} 
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        {user.contacts?.phone && (
+                             <div className="flex items-center gap-2 text-sm text-gray-600 p-2 bg-gray-50 rounded-lg">
+                                <Phone size={16} className="text-blue-500" />
+                                <span className="truncate">{user.contacts.phone}</span>
+                             </div>
+                        )}
+                        {user.contacts?.linkedin && (
+                             <a href={user.contacts.linkedin.startsWith('http') ? user.contacts.linkedin : `https://${user.contacts.linkedin}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 p-2 bg-gray-50 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                <Linkedin size={16} className="text-blue-700" />
+                                <span className="truncate">LinkedIn</span>
+                             </a>
+                        )}
+                        {user.contacts?.instagram && (
+                             <a href={user.contacts.instagram.startsWith('http') ? user.contacts.instagram : `https://instagram.com/${user.contacts.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 p-2 bg-gray-50 rounded-lg hover:bg-pink-50 hover:text-pink-600 transition-colors">
+                                <Instagram size={16} className="text-pink-600" />
+                                <span className="truncate">{user.contacts.instagram}</span>
+                             </a>
+                        )}
+                        {user.contacts?.website && (
+                             <a href={user.contacts.website.startsWith('http') ? user.contacts.website : `https://${user.contacts.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 p-2 bg-gray-50 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                <Globe size={16} className="text-gray-500" />
+                                <span className="truncate">Website</span>
+                             </a>
+                        )}
+                        {!user.contacts?.phone && !user.contacts?.linkedin && !user.contacts?.instagram && !user.contacts?.website && (
+                            <p className="col-span-2 text-sm text-gray-400 italic">Nenhum contato registrado.</p>
+                        )}
+                    </div>
                 )}
             </div>
         </div>
