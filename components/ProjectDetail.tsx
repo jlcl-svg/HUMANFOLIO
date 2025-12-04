@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Project, ProjectPhase, StageData, User } from '../types';
 import { ArrowLeft, CheckCircle2, AlertCircle, FileText, ImageIcon, HelpCircle, Info, Edit2, Trash2, Tag, X } from 'lucide-react';
 import HumanityChart from './HumanityChart';
@@ -15,34 +16,66 @@ interface Props {
 const ProjectDetail: React.FC<Props> = ({ project, onBack, onUpdateProject, currentUser, onEditProject, onDeleteProject }) => {
   const [activeTab, setActiveTab] = useState<ProjectPhase>(ProjectPhase.INITIATION);
   const [isVoting, setIsVoting] = useState(false);
-  const [currentVote, setCurrentVote] = useState(project.stages[activeTab].myRating || 0);
+  
+  // Try to find if user already voted in the new structure, fallback to local myRating
+  const getInitialVote = (phase: ProjectPhase): number => {
+    const stage = project.stages[phase];
+    if (stage.votes && stage.votes[currentUser.id] !== undefined) {
+        return stage.votes[currentUser.id];
+    }
+    return 0; // Default to 0 if not voted yet
+  };
+
+  const [currentVote, setCurrentVote] = useState(getInitialVote(activeTab));
   const [viewImage, setViewImage] = useState<string | null>(null);
 
   const isOwner = currentUser.id === project.authorId;
   const currentStageData = project.stages[activeTab];
+
+  // Update currentVote when tab changes
+  useEffect(() => {
+    setCurrentVote(getInitialVote(activeTab));
+    setIsVoting(false);
+  }, [activeTab, project]);
 
   const handleVoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCurrentVote(parseInt(e.target.value));
   };
 
   const submitVote = () => {
-    const newPeerRating = Math.round((currentStageData.peerRating * 4 + currentVote) / 5);
-    
+    // 1. Retrieve or Initialize votes map
+    const currentVotes: Record<string, number> = currentStageData.votes || {};
+
+    // 2. Add/Update current user's vote
+    const updatedVotes = {
+        ...currentVotes,
+        [currentUser.id]: currentVote
+    };
+
+    // 3. Calculate Average for THIS Stage (Sum of all votes / Count of voters)
+    const voteValues = Object.values(updatedVotes) as number[];
+    const averageStageScore = voteValues.length > 0
+        ? voteValues.reduce((a, b) => a + b, 0) / voteValues.length
+        : 0;
+
+    // 4. Update the Stage Object
     const updatedStage: StageData = {
       ...currentStageData,
-      myRating: currentVote,
-      peerRating: newPeerRating
+      peerRating: parseFloat(averageStageScore.toFixed(1)), // Store rounded average
+      votes: updatedVotes,
+      lastUpdated: new Date().toISOString()
     };
 
     const updatedStages = { ...project.stages, [activeTab]: updatedStage };
     
-    // Recalculate total score
-    const totalScore = (Object.values(updatedStages) as StageData[]).reduce((acc, s) => acc + s.peerRating, 0);
+    // 5. Recalculate Total Project Score
+    // Sum of all 5 stages averages (Max potential = 100 because 5 * 20 = 100)
+    const totalScore = (Object.values(updatedStages) as StageData[]).reduce((acc, s) => acc + (s.peerRating || 0), 0);
 
     onUpdateProject({
       ...project,
       stages: updatedStages,
-      totalHumanityScore: totalScore
+      totalHumanityScore: Math.round(totalScore)
     });
     setIsVoting(false);
   };
@@ -54,6 +87,7 @@ const ProjectDetail: React.FC<Props> = ({ project, onBack, onUpdateProject, curr
   };
 
   const ratingInfo = getRatingLabel(currentVote);
+  const totalVotesCount = currentStageData.votes ? Object.keys(currentStageData.votes).length : 0;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 animate-fade-in relative">
@@ -163,8 +197,6 @@ const ProjectDetail: React.FC<Props> = ({ project, onBack, onUpdateProject, curr
                         key={phase}
                         onClick={() => {
                             setActiveTab(phase);
-                            setIsVoting(false);
-                            setCurrentVote(project.stages[phase].myRating || 0);
                         }}
                         className={`text-sm font-medium whitespace-nowrap pb-4 border-b-2 transition-all ${
                             activeTab === phase 
@@ -183,7 +215,7 @@ const ProjectDetail: React.FC<Props> = ({ project, onBack, onUpdateProject, curr
                     <div>
                         <h2 className="text-xl font-bold text-gray-900 mb-1">{activeTab}</h2>
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
-                            Avaliação dos Pares: {currentStageData.peerRating}/20
+                            Avaliação Média dos Pares: {currentStageData.peerRating}/20 ({totalVotesCount} votos)
                         </div>
                     </div>
                 </div>
@@ -223,14 +255,22 @@ const ProjectDetail: React.FC<Props> = ({ project, onBack, onUpdateProject, curr
                     {!isVoting ? (
                         <div className="flex justify-between items-center">
                             <div>
-                                <p className="text-sm font-medium text-gray-900">Validar Humanidade</p>
-                                <p className="text-xs text-gray-500">Avalie se este processo reflete uma construção humana real.</p>
+                                <p className="text-sm font-medium text-gray-900">
+                                    {currentStageData.votes && currentStageData.votes[currentUser.id] !== undefined 
+                                        ? "Você já avaliou esta etapa" 
+                                        : "Validar Humanidade"}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                    {currentStageData.votes && currentStageData.votes[currentUser.id] !== undefined 
+                                        ? `Sua nota: ${currentStageData.votes[currentUser.id]}/20. Clique para alterar.`
+                                        : "Avalie se este processo reflete uma construção humana real."}
+                                </p>
                             </div>
                             <button 
                                 onClick={() => setIsVoting(true)}
                                 className="bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-black transition-all shadow-sm"
                             >
-                                Avaliar Processo
+                                {currentStageData.votes && currentStageData.votes[currentUser.id] !== undefined ? "Alterar Avaliação" : "Avaliar Processo"}
                             </button>
                         </div>
                     ) : (
@@ -249,7 +289,7 @@ const ProjectDetail: React.FC<Props> = ({ project, onBack, onUpdateProject, curr
                             </div>
 
                             <div className="flex justify-between items-end mb-4">
-                                <label className="text-sm font-medium text-gray-900">Nível de Humanidade Percebida</label>
+                                <label className="text-sm font-medium text-gray-900">Sua Avaliação</label>
                                 <span className={`text-xl font-bold ${ratingInfo.color}`}>{currentVote}/20 <span className="text-xs font-normal text-gray-500 ml-1">({ratingInfo.label})</span></span>
                             </div>
                             
@@ -276,7 +316,10 @@ const ProjectDetail: React.FC<Props> = ({ project, onBack, onUpdateProject, curr
                                     Confirmar Avaliação
                                 </button>
                                 <button 
-                                    onClick={() => setIsVoting(false)}
+                                    onClick={() => {
+                                        setIsVoting(false);
+                                        setCurrentVote(getInitialVote(activeTab)); // Reset to saved vote or 0
+                                    }}
                                     className="px-6 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
                                 >
                                     Cancelar

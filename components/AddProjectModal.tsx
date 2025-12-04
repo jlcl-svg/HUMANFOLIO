@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Plus, Trash2, ArrowRight, ArrowLeft, Check, Image as ImageIcon, Tag } from 'lucide-react';
 import { ProjectPhase, StageData, Project } from '../types';
@@ -18,6 +19,7 @@ const getEmptyStages = (): Record<ProjectPhase, StageData> => {
       description: '',
       evidenceLinks: [],
       peerRating: 0,
+      votes: {}, // Initialize empty votes map
       lastUpdated: new Date().toISOString()
     };
     return acc;
@@ -45,7 +47,18 @@ const AddProjectModal: React.FC<Props> = ({ isOpen, onClose, onSave, currentUser
         setDescription(projectToEdit.description);
         setCoverImage(projectToEdit.coverImage || '');
         setTags(projectToEdit.tags || []);
-        setStages(JSON.parse(JSON.stringify(projectToEdit.stages)));
+        // Deep copy needed to ensure we don't mutate state directly before saving
+        // and to handle potentially missing 'votes' field on legacy projects
+        const loadedStages = JSON.parse(JSON.stringify(projectToEdit.stages));
+        
+        // Ensure legacy projects have votes object
+        Object.keys(loadedStages).forEach(key => {
+            if (!loadedStages[key as ProjectPhase].votes) {
+                loadedStages[key as ProjectPhase].votes = {};
+            }
+        });
+        
+        setStages(loadedStages);
         setStep(1);
       } else {
         resetForm();

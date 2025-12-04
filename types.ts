@@ -1,3 +1,4 @@
+
 export enum ProjectPhase {
   INITIATION = "Iniciação",
   PLANNING = "Planejamento",
@@ -10,8 +11,9 @@ export interface StageData {
   phase: ProjectPhase;
   description: string;
   evidenceLinks: string[]; // Links to drive, docs, photos
-  peerRating: number; // 0 to 20
-  myRating?: number; // User's rating for this session
+  peerRating: number; // The calculated average score (0 to 20)
+  votes?: Record<string, number>; // Map of UserId -> Score to calculate real averages
+  myRating?: number; // Legacy field for UI state, now derived from votes
   lastUpdated: string;
 }
 
